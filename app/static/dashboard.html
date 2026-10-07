@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>AI EIR · Safety dashboard</title>
+<style>
+:root{
+  --bg:#F7FAF9; --surface:#FFFFFF; --sunk:#EEF3F1; --ink:#17283C; --muted:#56667A; --line:#DCE5E8;
+  --accent:#0C7266; --accent-soft:#E3F5F0;
+  --green:#1F7A4D; --green-bg:#E2F4EA; --yellow:#7A5A00; --yellow-bg:#FFF1C7; --red:#B42318; --red-bg:#FDE4E1;
+  --font:"Avenir Next","Avenir","Nunito Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--font)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+header{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line);display:flex;gap:18px;align-items:center;padding:10px 20px;flex-wrap:wrap}
+header b{font-size:1.05rem}
+nav{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+nav button{border:0;background:none;padding:8px 12px;border-radius:10px;cursor:pointer;color:var(--muted);font-weight:600;min-height:40px}
+nav button[aria-current=page]{background:var(--accent-soft);color:var(--ink)}
+.live{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted)}
+.dotlive{width:9px;height:9px;border-radius:50%;background:#9AA7B4}
+.dotlive.on{background:var(--green);box-shadow:0 0 0 4px var(--green-bg)}
+main{max-width:1200px;margin:0 auto;padding:24px 20px 80px}
+h1{font-size:1.6rem;margin:0 0 4px}
+h2{font-size:1.15rem;margin:28px 0 10px}
+.muted{color:var(--muted)}
+.small{font-size:.86rem}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:16px}
+.tile{border-radius:16px;padding:18px;border:1px solid var(--line);background:var(--surface)}
+.tile b{display:block;font-size:2.4rem;line-height:1.1}
+.tile.g{background:var(--green-bg)} .tile.y{background:var(--yellow-bg)} .tile.r{background:var(--red-bg)}
+.badge{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:.78rem;padding:2px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.03em}
+.badge::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.badge.green{color:var(--green);background:var(--green-bg)} .badge.yellow{color:var(--yellow);background:var(--yellow-bg)} .badge.red{color:var(--red);background:var(--red-bg)}
+.badge.none{color:var(--muted);background:var(--sunk)}
+.alert{display:grid;grid-template-columns:1fr auto;gap:8px 16px;align-items:center;padding:14px 16px;border:2px solid var(--red);background:var(--red-bg);border-radius:14px;margin-bottom:10px}
+.alert.ack{border-color:var(--line);background:var(--surface)}
+.alert .who{font-weight:700}
+.btn{border:1.5px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:10px;font-weight:700;cursor:pointer;min-height:40px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.danger{background:var(--red);border-color:var(--red);color:#fff}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.8rem;color:var(--muted);font-weight:700}
+tr.click{cursor:pointer} tr.click:hover td{background:var(--sunk)}
+.spark{display:inline-flex;gap:3px}
+.spark i{width:14px;height:14px;border-radius:4px;background:var(--sunk)}
+.spark i.green{background:#7CCB9E} .spark i.yellow{background:#F2C94C} .spark i.red{background:#E5484D}
+.timeline{list-style:none;padding:0;margin:0}
+.timeline li{display:grid;grid-template-columns:150px 90px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.timeline li.changed{background:linear-gradient(90deg,var(--sunk),transparent 40%)}
+.quote{background:var(--sunk);border-radius:10px;padding:8px 12px;margin:6px 0;white-space:pre-wrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.card.red{border-left:5px solid var(--red)} .card.yellow{border-left:5px solid #F2C94C} .card.green{border-left:5px solid #7CCB9E}
+.bars{display:grid;gap:8px}
+.bar{display:grid;grid-template-columns:150px 1fr 60px;gap:10px;align-items:center}
+.bar .t{height:12px;background:var(--sunk);border-radius:6px;overflow:hidden}
+.bar .t i{display:block;height:100%;background:var(--accent)}
+.banner{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:var(--red);color:#fff;padding:12px 18px;border-radius:12px;font-weight:700;box-shadow:0 10px 30px rgba(180,35,24,.35);z-index:10;display:none}
+.banner.show{display:block}
+.login{max-width:420px;margin:12vh auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:26px}
+input,select,textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;background:var(--surface);min-height:42px}
+label{font-weight:700;font-size:.88rem;display:block;margin:10px 0 4px}
+.err{color:var(--red);font-weight:700}
+@media (max-width:760px){.tiles{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}.timeline li{grid-template-columns:1fr}.bar{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="banner" class="banner" role="alert"></div>
+<div id="app"></div>
+<script>
+(function(){
+"use strict";
+var TOKEN = sessionStorage.getItem("aieir_staff") || "";
+var ME = null, VIEW = "live", FOUNDER = null, FEED = [];
+var app = document.getElementById("app");
+
+function h(tag, attrs){ var el=document.createElement(tag); if(attrs) for(var k in attrs){ var v=attrs[k]; if(v==null||v===false) continue;
+  if(k==="text") el.textContent=v; else if(k.slice(0,2)==="on") el.addEventListener(k.slice(2),v); else el.setAttribute(k,v===true?"":v); }
+  for(var i=2;i<arguments.length;i++){ var c=arguments[i]; if(c==null||c===false) continue; if(Array.isArray(c)) c.forEach(function(x){ if(x!=null&&x!==false) el.append(x instanceof Node?x:String(x)); }); else el.append(c instanceof Node?c:String(c)); }
+  return el; }
+function badge(z){ return h("span",{class:"badge "+(z||"none")}, z ? z : "no recent activity"); }
+function when(t){ return t ? new Date(t).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : "—"; }
+function pct(v){ return v==null ? "—" : Math.round(v*100)+"%"; }
+function can(p){ return ME && ME.permissions.indexOf(p) >= 0; }
+
+async function api(path, opts){
+  opts = opts || {}; opts.headers = Object.assign({"Authorization":"Bearer "+TOKEN,"Content-Type":"application/json"}, opts.headers||{});
+  var r = await fetch(path, opts);
+  if (r.status === 401){ sessionStorage.removeItem("aieir_staff"); TOKEN=""; login("Your session ended. Sign in again."); throw new Error("401"); }
+  var j = await r.json().catch(function(){ return {}; });
+  if (!r.ok) throw new Error(j.error || j.detail || ("HTTP "+r.status));
+  return j;
+}
+
+function login(msg){
+  app.replaceChildren(h("div",{class:"login"},
+    h("h1",null,"Safety dashboard"),
+    h("p",{class:"muted"},"For trained EIR and safety staff only. Every view of a founder's data is logged."),
+    msg && h("p",{class:"err",role:"alert"},msg),
+    h("form",{onsubmit:async function(e){ e.preventDefault(); TOKEN=document.getElementById("tok").value.trim();
+      try{ ME = await api("/staff/api/me"); sessionStorage.setItem("aieir_staff",TOKEN); start(); }catch(err){ if(err.message!=="401") login("That token didn't work."); } }},
+      h("label",{for:"tok"},"Staff token"), h("input",{id:"tok",type:"password",autocomplete:"off",required:true}),
+      h("div",{style:"margin-top:14px"}, h("button",{class:"btn primary",type:"submit"},"Sign in")))));
+}
+
+var VIEWS = [["live","Live overview","view_overview"],["founders","Founders","view_founders"],["reviews","Review queue","view_review_queue"],["trends","Trends","view_trends"],["audit","Audit log","view_audit_log"]];
+function shell(){
+  return h("header",null, h("b",null,"AI EIR safety"),
+    h("nav",{"aria-label":"Views"}, VIEWS.filter(function(v){ return can(v[2]); }).map(function(v){
+      return h("button",{"aria-current":VIEW===v[0]?"page":null,onclick:function(){ VIEW=v[0]; FOUNDER=null; location.hash=v[0]; render(); }},v[1]); })),
+    h("span",{class:"live"}, h("span",{class:"dotlive",id:"livedot"}), h("span",{id:"livetxt"},"connecting…")),
+    h("span",{class:"small muted"}, ME.role.replace("_"," ")),
+    h("button",{class:"btn",onclick:function(){ sessionStorage.removeItem("aieir_staff"); location.reload(); }},"Sign out"));
+}
+
+async function render(){
+  var main = h("main",{id:"main"}, h("p",{class:"muted"},"Loading…"));
+  app.replaceChildren(shell(), main);
+  try{
+    var body = FOUNDER ? await viewFounder(FOUNDER) : await ({live:viewLive,founders:viewFounders,reviews:viewReviews,trends:viewTrends,audit:viewAudit}[VIEW] || viewLive)();
+    main.replaceChildren.apply(main, [].concat(body).flat(Infinity).filter(function(x){ return x!=null && x!==false; }));
+  }catch(e){ if(e.message!=="401") main.replaceChildren(h("p",{class:"err",role:"alert"},"Couldn't load this view: "+e.message)); }
+  setLive(STREAM_OK);
+}
+
+// ---------------------------------------------------------- 1. live overview
+async function viewLive(){
+  var o = await api("/staff/api/overview"), a = o.active_sessions;
+  var open = o.red_alerts.filter(function(x){ return x.status==="open"; });
+  document.title = (open.length ? "("+open.length+" RED) " : "") + "AI EIR · Safety dashboard";
+  return [h("h1",null,"Live overview"), h("p",{class:"muted small"},"Sessions active in the last 2 hours, by their highest zone. Updates live."),
+    h("div",{class:"tiles"},
+      h("div",{class:"tile g"},h("b",null,a.green),"GREEN sessions"),
+      h("div",{class:"tile y"},h("b",null,a.yellow),"YELLOW sessions"),
+      h("div",{class:"tile r"},h("b",null,a.red),"RED sessions")),
+    h("h2",null,"RED alerts"),
+    o.red_alerts.length ? o.red_alerts.map(function(r){
+      return h("div",{class:"alert"+(r.status==="open"?"":" ack"),id:"alert-"+r.alert_id},
+        h("div",null, h("div",{class:"who"}, r.status==="open" ? "Needs acknowledgement · " : "Acknowledged · ",
+            h("a",{href:"#",onclick:function(e){ e.preventDefault(); FOUNDER=r.founder_id; render(); }}, r.founder)),
+          h("div",{class:"small"}, "Flagged "+when(r.created_at)+" · "+r.minutes_open+" min ago · "+(r.categories.join(", ")||"unspecified")+
+            (r.escalated?" · escalated to second contact":"")+(r.emailed?" · on-call emailed":" · email pending"))),
+        h("div",{class:"row"},
+          r.status==="open" && h("button",{class:"btn danger",onclick:async function(){ await api("/staff/api/alerts/"+r.alert_id+"/ack",{method:"POST"}); render(); }},"Acknowledge"),
+          h("button",{class:"btn",onclick:async function(){ await api("/staff/api/alerts/"+r.alert_id+"/resolve",{method:"POST"}); render(); }},"Resolve")));
+    }) : h("p",{class:"muted"},"No open RED alerts."),
+    h("h2",null,"Live events"),
+    h("div",{class:"panel",id:"feed"}, FEED.length ? FEED.map(feedRow) : h("p",{class:"muted small"},"Waiting for events…"))];
+}
+function feedRow(e){ return h("div",{class:"row small",style:"padding:4px 0"}, h("span",{class:"muted"},when(e.at)), e.type==="alert" ? h("span",null,"Alert "+e.status) : badge(e.zone)); }
+
+// ---------------------------------------------------------- 2. founder list
+async function viewFounders(){
+  var list = await api("/staff/api/founders");
+  return [h("h1",null,"Founders"), h("p",{class:"muted small"},"Current zone is the most recent session's state, not a label on the person. It clears after 14 quiet days."),
+    h("div",{class:"panel"}, h("table",null,
+      h("thead",null,h("tr",null,["Founder","Current","Last activity","4-week trend","Professional KPIs","Personal KPIs"].map(function(t){ return h("th",{scope:"col"},t); }))),
+      h("tbody",null, list.map(function(f){
+        return h("tr",{class:"click",tabindex:"0",onclick:function(){ FOUNDER=f.founder_id; render(); },onkeydown:function(e){ if(e.key==="Enter"){ FOUNDER=f.founder_id; render(); } }},
+          h("td",null,h("b",null,f.name), f.open_alert && h("div",{class:"small",style:"color:var(--red);font-weight:700"},"Open RED alert")),
+          h("td",null,badge(f.current_zone)), h("td",{class:"small"},when(f.last_activity)),
+          h("td",null,h("span",{class:"spark",role:"img","aria-label":"Last 4 weeks: "+f.zone_trend_4w.map(function(z){ return z||"none"; }).join(", ")},
+            f.zone_trend_4w.map(function(z){ return h("i",{class:z||""}); }))),
+          h("td",null,pct(f.professional_completion)), h("td",null,pct(f.personal_completion)));
+      }))))];
+}
+
+// ---------------------------------------------------------- 3. founder detail
+async function viewFounder(id){
+  var d = await api("/staff/api/founders/"+id);
+  return [h("button",{class:"btn",onclick:function(){ FOUNDER=null; render(); }},"← Back"),
+    h("h1",{style:"margin-top:12px"}, d.founder.name || "Founder"),
+    h("p",{class:"muted small"}, d.founder.email+" · "+d.founder.country+" · consented to safety review "+when(d.founder.consented_at)+
+      (d.state ? " · week "+d.state.current_week+(d.state.paused?" · KPIs paused ("+d.state.pause_reason+")":"") : "")),
+    h("p",{class:"small muted"},"This view was recorded in the audit log."),
+    h("h2",null,"Zone timeline"),
+    h("div",{class:"panel"}, h("ul",{class:"timeline"}, d.timeline.map(function(e){
+      return h("li",{class:e.changed?"changed":""}, h("div",{class:"small"},when(e.at), e.changed && h("div",{class:"muted"},"zone changed")),
+        h("div",null,badge(e.zone)),
+        h("div",null, e.message && h("div",{class:"quote"},e.message),
+          h("div",{class:"small"},h("b",null,"Why: "), e.rationale||"—"),
+          h("div",{class:"small muted"},"Model: "+(e.model_zone||"unavailable")+(e.confidence!=null?" ("+Math.round(e.confidence*100)+"% confident)":"")+
+            " · reply: "+e.mode.replace("_"," ")+(e.escalation_reasons.length?" · raised by: "+e.escalation_reasons.join(", "):"")+
+            (e.categories.length?" · "+e.categories.join(", "):""))));
+    }))),
+    h("div",{class:"grid2"},
+      h("div",null,h("h2",null,"KPI history"), h("div",{class:"panel"}, !d.kpis.length ? h("p",{class:"muted"},"No KPIs yet.") : h("table",null,h("tbody",null,d.kpis.map(function(k){
+        return h("tr",null,h("td",{class:"small"},"Wk "+k.week_number), h("td",null,k.title, k.replaced_by_guardrail && h("div",{class:"small muted"},"replaced by safety guardrail")),
+          h("td",{class:"small"},k.type), h("td",{class:"small"},k.status)); }))))),
+      h("div",null,h("h2",null,"Reflections"), h("div",{class:"panel"}, d.reflections.length ? d.reflections.map(function(r){
+        return h("div",{style:"padding:6px 0;border-bottom:1px solid var(--line)"}, h("div",{class:"small muted"},"Week "+r.week+" · "+r.kpi),
+          r.skipped ? h("i",null,"Chose not to say") : h("div",null,r.text)); }) : h("p",{class:"muted"},"None yet."))))];
+}
+
+// ---------------------------------------------------------- 4. review queue
+async function viewReviews(){
+  var q = await api("/staff/api/reviews");
+  return [h("h1",null,"Review queue"), h("p",{class:"muted small"},"RED due within 15 minutes, YELLOW within 48 hours. A small random sample of GREEN is included to catch missed signals. Your verdicts feed classifier accuracy."),
+    q.length ? q.map(function(it){
+      var zoneSel = h("select",{"aria-label":"What zone should this have been?"}, ["green","yellow","red"].map(function(z){ return h("option",{value:z,selected:z===it.zone?true:null},"Should be "+z.toUpperCase()); }));
+      var note = h("textarea",{rows:"2",placeholder:"Note (optional)","aria-label":"Reviewer note"});
+      function send(v){ return async function(){ await api("/staff/api/reviews/"+it.event_id,{method:"POST",body:JSON.stringify({verdict:v,human_zone:zoneSel.value,note:note.value||null})}); render(); }; }
+      return h("div",{class:"card "+it.zone},
+        h("div",{class:"row"}, badge(it.zone), it.sampled_green && h("span",{class:"small muted"},"random GREEN sample"),
+          h("b",null,it.founder), h("span",{class:"small muted"},when(it.at)), it.overdue && h("span",{class:"small",style:"color:var(--red);font-weight:700"},"overdue")),
+        it.message && h("div",{class:"quote"},it.message),
+        h("div",{class:"small"},h("b",null,"Classifier: "),(it.rationale||"—")+(it.confidence!=null?" ("+Math.round(it.confidence*100)+"%)":"")),
+        it.escalation_reasons.length ? h("div",{class:"small muted"},"Raised by code: "+it.escalation_reasons.join(", ")) : null,
+        h("div",{class:"grid2",style:"margin-top:10px"}, zoneSel, note),
+        h("div",{class:"row",style:"margin-top:10px"},
+          h("button",{class:"btn primary",onclick:send("agree")},"Agree"), h("button",{class:"btn",onclick:send("disagree")},"Disagree"),
+          h("button",{class:"btn danger",onclick:send("escalated")},"Escalated"), h("button",{class:"btn",onclick:send("resolved")},"Resolved")));
+    }) : h("p",{class:"muted"},"Nothing waiting for review.")];
+}
+
+// ---------------------------------------------------------- 5. trends
+async function viewTrends(){
+  var t = await api("/staff/api/trends");
+  var max = Math.max.apply(null,[1].concat(t.weekly_zone_counts.map(function(w){ return w.green+w.yellow+w.red; })));
+  var pr = t.classifier_precision_recall;
+  return [h("h1",null,"Trends"), h("p",{class:"muted small"},t.note),
+    h("div",{class:"tiles"},
+      h("div",{class:"tile"},h("b",null,t.red_time_to_ack_minutes==null?"—":t.red_time_to_ack_minutes+" min"),"average time to acknowledge RED", h("div",{class:"small muted"},t.red_acknowledged_late+" of "+t.red_acknowledged+" took over 15 min")),
+      h("div",{class:"tile"},h("b",null,t.agreement_rate==null?"—":Math.round(t.agreement_rate*100)+"%"),"classifier agreement with reviewers", h("div",{class:"small muted"},t.reviews+" reviews")),
+      h("div",{class:"tile"},h("b",null,t.top_categories.length?t.top_categories[0].category.replace("_"," "):"—"),"top YELLOW/RED category")),
+    h("h2",null,"Zone distribution by week"),
+    h("div",{class:"panel"}, t.weekly_zone_counts.length ? weeklyChart(t.weekly_zone_counts, max) : h("p",{class:"muted"},"No events yet.")),
+    h("div",{class:"grid2"},
+      h("div",null,h("h2",null,"Top categories (YELLOW and RED)"), h("div",{class:"panel bars"},
+        t.top_categories.length ? t.top_categories.map(function(c){ var m=t.top_categories[0].count;
+          return h("div",{class:"bar"},h("span",null,c.category.replace("_"," ")),h("span",{class:"t"},h("i",{style:"width:"+(c.count/m*100)+"%"})),h("b",null,c.count)); }) : h("p",{class:"muted small"},"Not enough data to show (counts under 5 are hidden)."),
+        t.categories_suppressed_under_5 ? h("p",{class:"small muted"},t.categories_suppressed_under_5+" events in small categories hidden.") : null)),
+      h("div",null,h("h2",null,"Classifier accuracy from reviews"), h("div",{class:"panel"}, h("table",null,
+        h("thead",null,h("tr",null,["Zone","Precision","Recall","Reviewed"].map(function(x){ return h("th",{scope:"col"},x); }))),
+        h("tbody",null,["green","yellow","red"].map(function(z){ return h("tr",null,h("td",null,badge(z)),h("td",null,pct(pr[z].precision)),h("td",null,pct(pr[z].recall)),h("td",null,pr[z].reviewed)); })))),
+        h("p",{class:"small muted"},"Reviewer verdicts are the ground truth. GREEN recall depends on the random GREEN sample.")))];
+}
+
+function weeklyChart(rows, max){
+  var NS="http://www.w3.org/2000/svg", W=rows.length*64+20;
+  function el(tag, a){ var e=document.createElementNS(NS,tag); for(var k in a) e.setAttribute(k,a[k]); return e; }
+  var svg=el("svg",{viewBox:"0 0 "+W+" 186",width:"100%",height:"210",role:"img",
+    "aria-label":"Weekly zone counts: "+rows.map(function(w){ return "week of "+w.week+": green "+w.green+", yellow "+w.yellow+", red "+w.red; }).join("; ")});
+  rows.forEach(function(w,i){ var x=14+i*64, y=160;
+    [["green","#7CCB9E"],["yellow","#F2C94C"],["red","#E5484D"]].forEach(function(z){ var hgt=w[z[0]]/max*140; y-=hgt;
+      if(hgt>0){ var r=el("rect",{x:x,y:y,width:40,height:hgt,rx:3,fill:z[1]}); var tt=el("title",{}); tt.textContent=z[0]+": "+w[z[0]]; r.append(tt); svg.append(r); } });
+    var t=el("text",{x:x+20,y:178,"text-anchor":"middle","font-size":"11",fill:"#56667A"}); t.textContent=w.week.slice(5); svg.append(t); });
+  return svg;
+}
+
+async function viewAudit(){
+  var rows = await api("/staff/api/audit");
+  return [h("h1",null,"Audit log"), h("p",{class:"muted small"},"Every staff view of founder data. Append-only."),
+    h("div",{class:"panel"},h("table",null,h("thead",null,h("tr",null,["When","Staff","Action","Founder"].map(function(x){ return h("th",{scope:"col"},x); }))),
+      h("tbody",null,rows.map(function(r){ return h("tr",null,h("td",{class:"small"},when(r.at)),h("td",{class:"small"},r.staff_email||"system"),h("td",null,r.action.replace(/_/g," ")),h("td",{class:"small muted"},r.user_id||"—")); }))))];
+}
+
+// ---------------------------------------------------------- live stream
+var STREAM_OK = false;
+function setLive(on){ STREAM_OK=on; var d=document.getElementById("livedot"), t=document.getElementById("livetxt"); if(d){ d.classList.toggle("on",on); t.textContent=on?"live":"reconnecting…"; } }
+function flash(msg){ var b=document.getElementById("banner"); b.textContent=msg; b.classList.add("show"); setTimeout(function(){ b.classList.remove("show"); },8000); }
+async function stream(){
+  try{
+    var r = await fetch("/staff/api/stream",{headers:{"Authorization":"Bearer "+TOKEN}});
+    if(!r.ok) throw new Error("stream");
+    setLive(true);
+    var reader=r.body.getReader(), dec=new TextDecoder(), buf="";
+    while(true){ var x=await reader.read(); if(x.done) break; buf+=dec.decode(x.value,{stream:true});
+      var parts=buf.split("\n\n"); buf=parts.pop();
+      parts.forEach(function(p){ var line=p.split("\n").filter(function(l){ return l.indexOf("data: ")===0; })[0]; if(!line) return;
+        var ev; try{ ev=JSON.parse(line.slice(6)); }catch(e){ return; } if(!ev.type) return;
+        ev.at=new Date().toISOString(); FEED.unshift(ev); FEED=FEED.slice(0,20);
+        if(ev.type==="zone_event" && ev.zone==="red") flash("New RED alert — open Live overview to acknowledge");
+        if(!FOUNDER && (VIEW==="live" || (ev.type==="zone_event" && ev.zone!=="green" && VIEW==="reviews"))) render();
+      }); }
+  }catch(e){}
+  setLive(false); setTimeout(stream,3000);
+}
+
+async function start(){
+  var hv=(location.hash||"").replace("#",""); if(hv.indexOf("alert=")===0) VIEW="live"; else if(VIEWS.some(function(v){ return v[0]===hv; })) VIEW=hv;
+  await render(); stream();
+}
+if (TOKEN) api("/staff/api/me").then(function(m){ ME=m; start(); }).catch(function(){}); else login();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "_note": "Released prompts are immutable. To change one, add a new version file (e.g. eir_system_v2.md), add it here, point EIR_PROMPT_VERSION at it, and run the evals.",
+  "released": {
+    "eir_system_v1.md": "6c71d897a3f5edf222fe3c29af1d2a7f7952fc86903785cc8c4bcfea8bad10bd",
+    "zone_classifier_v1.md": "34b2a9963de16cac83df310cfaf91d36d4c5f73a2cb0cedf437bb6b103353c59",
+    "grader_v1.md": "445a1d3cf2df1e3a3b7f3e5204c2baa0a65d4086a135584902710931d5dd6a46",
+    "zone_classifier_v2.md": "5958579da5ea135e85a9198a211fac2d9b147a16a8e7beaa811143257de6550f",
+    "zone_classifier_v3.md": "8e9650f04641a5fa6a6a366427ed6adf6811182c805b7b7713c037ca62fd373c"
+  }
+}

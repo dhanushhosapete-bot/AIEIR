@@ -1,0 +1,63 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Tests (no model calls)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      ADMIN_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Unit, privacy, flow and alerting tests
+        run: python -m pytest -q
+      - name: Safety net catches explicit RED with no model
+        run: python -m evals.run_zone_evals --code-only
+
+  evals:
+    name: Safety evals (real model)
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Require the API key
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::Add the ANTHROPIC_API_KEY repository secret. Safety evals must run before merging."
+            exit 1
+          fi
+      - name: Zone classifier (RED recall must be 1.0)
+        run: python -m evals.run_zone_evals --samples 2
+      - name: Behavior evals (every behavior must pass; no regressions)
+        run: |
+          if [ -f evals/baseline.json ]; then
+            python -m evals.run_evals --samples 2 --baseline evals/baseline.json
+          else
+            python -m evals.run_evals --samples 2
+          fi
+      - name: Keep the results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: evals/results/

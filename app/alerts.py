@@ -106,7 +106,7 @@ def _contact(level: int) -> str:
 
 
 def _email(alert: dict, level: int) -> tuple[str, str]:
-    url = os.environ.get("STAFF_DASHBOARD_URL", "http://localhost:8000/staff")
+    url = os.environ.get("STAFF_DASHBOARD_URL") or (os.environ.get("RENDER_EXTERNAL_URL", "http://localhost:8000").rstrip("/") + "/staff")
     cats = ", ".join(alert["categories"]) or "unspecified"
     when = alert["created_at"].strftime("%Y-%m-%d %H:%M UTC")
     if level == 0:

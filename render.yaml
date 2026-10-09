@@ -1,0 +1,56 @@
+# One-click deploy to Render: https://render.com/deploy?repo=https://github.com/dhanushhosapete-bot/AIEIR
+# Creates a Postgres 16 database, the API (founder API + staff portal at /staff) and a
+# daily retention job. Secrets marked `sync: false` are asked for during setup.
+databases:
+  - name: aieir-db
+    plan: basic-256mb          # paid; Render's free database is deleted after 30 days
+    postgresMajorVersion: "16"
+    databaseName: aieir
+    user: aieir_owner
+    ipAllowList: []            # no access from the internet; only Render services can connect
+
+services:
+  - type: web
+    name: aieir
+    runtime: python
+    plan: starter              # stays awake; the free plan sleeps, which would delay RED alerts
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.deploy
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: ADMIN_DATABASE_URL
+        fromDatabase: {name: aieir-db, property: connectionString}
+      - key: AIEIR_APP_PASSWORD
+        generateValue: true
+      - key: AIEIR_STAFF_PASSWORD
+        generateValue: true
+      - key: AIEIR_DATA_KEY_SEED      # encryption key for founder text: back this up, losing it loses the data
+        generateValue: true
+      - key: STAFF_BOOTSTRAP_TOKEN    # the first admin's sign-in token for /staff
+        generateValue: true
+      - key: STAFF_BOOTSTRAP_EMAIL
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ENABLE_ALERT_WORKER
+        value: "1"
+      - key: RETENTION_DAYS
+        value: "365"
+
+  - type: cron
+    name: aieir-retention
+    runtime: python
+    plan: starter
+    schedule: "15 7 * * *"     # daily, 07:15 UTC
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.retention
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: ADMIN_DATABASE_URL
+        fromDatabase: {name: aieir-db, property: connectionString}
+      - key: RETENTION_DAYS
+        value: "365"

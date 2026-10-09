@@ -349,5 +349,12 @@ def health():
         crypto._keys()
     except Exception:
         enc = False
-    return {"database": ok, "encryption_configured": enc, "alert_email_configured": alerts.configured(),
+    body = {"database": ok, "encryption_configured": enc, "alert_email_configured": alerts.configured(),
+            "model_key_configured": bool(os.environ.get("ANTHROPIC_API_KEY")),
             "classifier_version": CLASSIFIER_VERSION, "prompt_version": settings.eir_prompt_version}
+    return JSONResponse(body, status_code=200 if ok and enc else 503)
+
+
+@app.get("/")
+def root():
+    return {"service": "AI EIR API", "staff_portal": "/staff", "api_docs": "/docs", "health": "/health"}

@@ -32,12 +32,15 @@ TABLES = ["audit_log", "reviews", "alerts", "zone_events", "feedback", "messages
 def database():
     if not ADMIN:
         pytest.skip("ADMIN_DATABASE_URL not set (see scripts/local_postgres.sh)")
+    # Mirror managed Postgres: the database owner is NOT a superuser, only CREATEROLE.
     name = f"aieir_test_{uuid.uuid4().hex[:8]}"
     with psycopg.connect(ADMIN, autocommit=True) as c:
-        c.execute(f'CREATE DATABASE "{name}"')
-    admin_url = ADMIN.split("?")[0].rsplit("/", 1)[0] + "/" + name
+        if not c.execute("SELECT 1 FROM pg_roles WHERE rolname = 'aieir_owner'").fetchone():
+            c.execute("CREATE ROLE aieir_owner LOGIN CREATEROLE NOSUPERUSER NOBYPASSRLS PASSWORD 'owner-test-pw'")
+        c.execute(f'CREATE DATABASE "{name}" OWNER aieir_owner')
+    host_part = ADMIN.split("?")[0].split("@", 1)[1].rsplit("/", 1)[0] + "/" + name
+    admin_url = f"postgresql://aieir_owner:owner-test-pw@{host_part}"
     migrate(admin_url, "app-test-pw", "staff-test-pw")
-    host_part = admin_url.split("@", 1)[1]
     app_url = f"postgresql://aieir_app:app-test-pw@{host_part}"
     staff_url = f"postgresql://aieir_staff:staff-test-pw@{host_part}"
     os.environ["DATABASE_URL"], os.environ["STAFF_DATABASE_URL"] = app_url, staff_url

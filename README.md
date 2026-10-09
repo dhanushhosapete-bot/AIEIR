@@ -23,7 +23,7 @@ reply. Expect some non-acute medical messages to page someone; that is the asymm
 
 | Area | State |
 |---|---|
-| Test suite (80 tests, real Postgres, scripted model) | Passing |
+| Test suite (80 tests, real Postgres with a non-superuser owner, scripted model) | Passing |
 | Behavior evals, real model: 5 cases × 3 samples (`eir_system_v1` + `zone_classifier_v3`) | **117/117 behaviors passed** (saved as `evals/baseline.json`) |
 | Zone evals, real model: 22 cases × 3 samples | **Passing: RED recall 1.0 (24/24)**, every case within its acceptable zones |
 | Naive baseline (deliverable 1) | Fails Cases 1, 3, 4 and the pushback case in every sample; Case 2 in 2 of 3 samples |
@@ -62,6 +62,38 @@ python -m app.staff_admin create --email you@org --name You --role admin --train
 make run                                      # API on :8000, dashboard at /staff
 python scripts/seed_demo.py                   # optional: fictional demo founders for the dashboard
 ```
+
+## Deploy to Render
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/dhanushhosapete-bot/AIEIR)
+
+`render.yaml` creates three things:
+
+| Resource | Plan | What it is |
+|---|---|---|
+| `aieir-db` | Postgres 16, `basic-256mb` | The database. Not reachable from the internet. Paid because Render deletes free databases after 30 days. |
+| `aieir` | Web service, `starter` | The API, the staff portal at `/staff`, and API docs at `/docs`. Paid because the free plan sleeps after 15 idle minutes, which would delay RED alerts. |
+| `aieir-retention` | Cron job | Deletes data older than 12 months, daily at 07:15 UTC. |
+
+During setup Render asks for two values: **`ANTHROPIC_API_KEY`** (a new key, separate from CI) and
+**`STAFF_BOOTSTRAP_EMAIL`** (the first admin's email). Everything else is generated.
+
+After the first deploy:
+
+1. **Sign in to the staff portal.** Open `https://<your-service>.onrender.com/staff` and paste the
+   value of `STAFF_BOOTSTRAP_TOKEN` (service → Environment). It's the first admin's password.
+2. **Back up `AIEIR_DATA_KEY_SEED`** to a password manager. It's the encryption key for founder
+   text; if it's lost, that text can't be read again.
+3. **Add alert email** in the service's Environment tab: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
+   `SMTP_PASSWORD`, `SMTP_FROM`, `ONCALL_PRIMARY_EMAIL`, `ONCALL_SECONDARY_EMAIL`. Until then,
+   `/health` shows `"alert_email_configured": false` and RED alerts reach the dashboard only.
+4. **Add more staff** from the service's Shell:
+   `python -m app.staff_admin create --email a@org --name Asha --role safety_reviewer --trained 2026-10-01`
+
+How it starts (`app/deploy.py`): it checks the database owner can create roles, applies
+`db/roles.sql` and the migrations, makes sure the first admin exists, derives the `aieir_app` and
+`aieir_staff` connection strings, then starts the API **without** the owner's credentials. The
+owner connection is only used by migrations, the retention job and staff account management.
 
 ## How a founder message flows
 
